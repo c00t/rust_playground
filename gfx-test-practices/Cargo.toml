@@ -1,0 +1,20 @@
+[package]
+name = "gfx-test-practices"
+version = "0.1.0"
+authors = ["Eric Zhu <cupofc0t@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+dx12 = ["gfx-backend-dx12"]
+
+[dependencies]
+winit = "*"
+gfx-hal = "*"
+
+
+[target.'cfg(windows)'.dependencies.gfx-backend-dx12]
+package = "gfx-backend-dx12"
+optional = true
