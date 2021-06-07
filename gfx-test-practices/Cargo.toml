@@ -15,6 +15,7 @@ winit = "*"
 gfx-hal = "*"
 gfx-backend-empty = "*"
 # shaderc = "0.7" use shaderc need cross-compile
+gfx-auxil = "*"
 
 
 [target.'cfg(windows)'.dependencies.gfx-backend-dx12]

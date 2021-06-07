@@ -1,6 +1,6 @@
 use std::iter;
 
-use gfx_hal::device::NagaShader;
+use gfx_hal::device::{Device, NagaShader, ShaderError};
 
 
 #[cfg(feature = "dx12")]
@@ -152,12 +152,16 @@ fn main() {
             .expect("Out of memory.")
     };
 
-    // import shaders
-    // shaderc need to build from source, so we need to install sdk, then compile glsl to SPIR-V
-    let vertex_shader = include_str!("../shaders/part1.vert");
-    let fragment_shader = include_str!("../shaders/part1.frag");
-    
-    
+    // get the pipeline
+    let pipeline = unsafe {
+        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"../shaders/vert.spv").unwrap(), compile_shader::<back::Backend>(&device,"../shaders/frag.spv").unwrap())
+    };
+
+    // sync primitives
+    let submission_complete_fence = device.create_fence(true).expect("Out of memeory");
+    let rendering_complete_semaphore = device.create_semaphore().expect("Out of memory");
+
+
 
     // Note that this takes a `move` closure. This means it will take ownership
     // over any resources referenced within. It also means they will be dropped
@@ -197,6 +201,96 @@ fn main() {
 
 
 }
-// fn compile_shader(glsl:&str,shader_kind:){
 
-// }
+// Create a Struct to store many resources
+struct Resources<B:gfx_hal::Backend> {
+    instance:B::Instance,
+    surface:B::Surface,
+    device:B::Device,
+    render_passes:Vec<B::RenderPass>,
+    pipeline_layouts:Vec<B::PipelineLayout>,
+    pipelines:Vec<B::GraphicsPipeline>,
+    command_pool:B::CommandPool,
+    submission_complete_fence:B::Fence,
+    rendering_complete_seraphore:B::Semaphore,
+}
+
+fn compile_shader<B:gfx_hal::Backend>(device:&B::Device,glslpath:&str) -> Result<B::ShaderModule,ShaderError>{
+    let mut file = std::fs::File::open(glslpath).unwrap();
+
+    let spirv = 
+        gfx_auxil::read_spirv(&mut file)
+        .unwrap();
+    unsafe {device.create_shader_module(&spirv)}
+}
+
+// building a pipeline example, future may have multiple pipeline, define a function to create a pipeline
+unsafe fn make_pipeline<B:gfx_hal::Backend>( // Generic over any backends.
+    device:&B::Device,
+    render_pass:&B::RenderPass,
+    pipeline_layout:&B::PipelineLayout,
+    vertex_shader:B::ShaderModule,
+    fragment_shader:B::ShaderModule,
+) -> B::GraphicsPipeline{
+    use gfx_hal::pass::Subpass;
+    use gfx_hal::pso::{
+        BlendState, ColorBlendDesc, ColorMask, EntryPoint, Face, GraphicsPipelineDesc,
+        InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, Specialization,
+    };
+    
+    // The EntryPoint struct is exactly what it sounds like - it defines how your shader begins executing.
+    let (vs_entry,fs_entry) : (EntryPoint<'_, B>, EntryPoint<'_, B>)= (
+        EntryPoint{
+            entry:"main",//entry name of the shader function
+            module:&vertex_shader,
+            specialization:Specialization::default(),
+        },
+        EntryPoint{
+            entry:"main",
+            module:&fragment_shader,
+            specialization:Specialization::default(),
+        },
+    );
+
+    // Define a primitive assembler, take vertices -> output primitives(some triangles)
+    // Here we define every stages used in graphic pipeline.
+    let primitive_assembler = PrimitiveAssemblerDesc::Vertex{
+        buffers:&[],
+        attributes:&[],
+        input_assembler:InputAssemblerDesc::new(Primitive::TriangleList),
+        vertex:vs_entry,
+        tessellation:None,
+        geometry:None,
+    };
+
+    // configure the pipeline
+    let mut pipeline_desc = GraphicsPipelineDesc::new(
+        primitive_assembler,
+        Rasterizer{
+            cull_face : Face::BACK,
+            ..Rasterizer::FILL // Can't add comma here
+        },
+        Some(fs_entry),
+        pipeline_layout,
+        Subpass{
+            index:0,
+            main_pass:render_pass,
+        },
+    );
+
+    pipeline_desc.blender.targets.push(ColorBlendDesc {
+        mask:ColorMask::ALL, // write to all color channel
+        blend:Some(BlendState::ALPHA), // alpha blending where pixels overlap
+    });
+
+    // create a pipeline
+    let pipeline = device
+        .create_graphics_pipeline(&&pipeline_desc, None)
+        .expect("Failed to create graphic pipeline.");
+    
+    device.destroy_shader_module(vertex_shader);
+    device.destroy_shader_module(fragment_shader);
+
+    pipeline
+
+}
