@@ -1,6 +1,10 @@
-use std::iter;
+/// This series of tutorials are somewhat out of date, so check official examples to use gfx-hal correctly.
+/// and method used in this tutorial is error-prone.
+/// though finally workable.
 
-use gfx_hal::device::{Device, NagaShader, ShaderError};
+use std::{borrow::Borrow, iter, mem::ManuallyDrop};
+
+use gfx_hal::{Instance, command::RenderAttachmentInfo, device::{Device, NagaShader, ShaderError}, prelude::Queue, window::PresentationSurface};
 
 
 #[cfg(feature = "dx12")]
@@ -154,15 +158,28 @@ fn main() {
 
     // get the pipeline
     let pipeline = unsafe {
-        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"../shaders/vert.spv").unwrap(), compile_shader::<back::Backend>(&device,"../shaders/frag.spv").unwrap())
+        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag.spv").unwrap())
     };
 
     // sync primitives
     let submission_complete_fence = device.create_fence(true).expect("Out of memeory");
     let rendering_complete_semaphore = device.create_semaphore().expect("Out of memory");
 
-
-
+    //create ResourcesHolder
+    let mut resources_holder : ResourcesHolder<back::Backend> = 
+        ResourcesHolder(ManuallyDrop::new(Resources{
+            instance,
+            surface,
+            device,
+            render_passes:vec![render_pass],
+            pipeline_layouts:vec![pipeline_layout],
+            pipelines:vec![pipeline],
+            command_pool,
+            submission_complete_fence,
+            rendering_complete_semaphore,
+        }));
+    
+    
     // Note that this takes a `move` closure. This means it will take ownership
     // over any resources referenced within. It also means they will be dropped
     // only when the application is quit.
@@ -194,6 +211,149 @@ fn main() {
             Event::MainEventsCleared => window.request_redraw(),
             Event::RedrawRequested(_) => {
                 //we will render our image here
+                //Resources just holder them, we should use reference to use them
+                let res:&mut Resources<_> = &mut resources_holder.0;
+                let render_pass = & res.render_passes[0];
+                let pipeline = & res.pipelines[0];
+
+                // first use of fence
+                // reset our command buffer
+                unsafe {
+                    use gfx_hal::pool::CommandPool;
+
+                    // add a timeout(1s), we refuse to wait more then a second, avoid hanging.
+                    let render_timeout_ns = 1_000_000_000;
+                    
+                    res.device
+                        .wait_for_fence(&res.submission_complete_fence, render_timeout_ns)// block method, when previous command buffer submit, we'll be singeled.
+                        .expect("out of Memory or device lost.");
+                    
+                    res.device
+                        .reset_fence(&mut res.submission_complete_fence)// when singaled must reset it.
+                        .expect("Out of memory");
+                    
+                    res.command_pool.reset(false);
+
+                }
+                use gfx_hal::window::SwapchainConfig;
+                let caps = res.surface.capabilities(&adapter.physical_device);
+
+                let mut swapchain_config = 
+                    SwapchainConfig::from_caps(&caps, surface_color_format, surface_extent); // physical size
+                
+                let surface_image = swapchain_config.framebuffer_attachment();
+
+
+                if should_configure_swapchain {
+
+                    
+                    // fix slowdown issue in MacOs
+                    if caps.image_count.contains(&3) {
+                        swapchain_config.image_count = 3;
+                    }
+                    // We also store the surface_extent that was returned in our swapchain_config
+                    // - just in case it’s different from the desired size that we provided.
+                    surface_extent = swapchain_config.extent;
+
+                    unsafe {
+                        res.surface
+                            .configure_swapchain(&res.device, swapchain_config)
+                            .expect("Failed to configure swapchain.");
+                    }
+
+                    should_configure_swapchain = false;
+
+                    // let surface_image = unsafe {
+                    //     // refuse timeout
+                    //     let acquire_timeout_ns = 1_000_000_000;
+    
+                    //     match res.surface.acquire_image(acquire_timeout_ns) {
+                    //         Ok((image,_)) => image,
+                    //         Err(_) => {
+                    //             should_configure_swapchain = true;
+                    //             return; // we can return nothing here, and ignore the type of other arm.
+                    //         }
+                    //     }
+                    // };
+                }
+                let surface_image2 = unsafe {
+                    match res.surface.acquire_image(!0) {
+                        Ok((image, _)) => image,
+                        Err(_) => {
+                            should_configure_swapchain = true;
+                            return;
+                        }
+                    }
+                };
+                let framebuffer = unsafe {
+                    use std::borrow::Borrow;
+                    use gfx_hal::image::Extent;
+
+                    res.device
+                        .create_framebuffer(render_pass,iter::once(surface_image), Extent{
+                            width:surface_extent.width,
+                            height:surface_extent.height,
+                            depth:1,
+                        }).unwrap()
+                };
+
+                //create a viewport settings
+                let viewport = {
+                    use gfx_hal::pso::{Rect,Viewport};
+
+                    Viewport {
+                        rect:Rect {
+                            x:0,
+                            y:0,
+                            w:surface_extent.width as i16,
+                            h:surface_extent.height as i16,
+                        },
+                        depth:0.0..1.0,
+                    }
+                };
+                unsafe {
+                    use gfx_hal::command::{
+                        ClearColor, ClearValue, CommandBuffer, CommandBufferFlags, SubpassContents,
+                    };
+                    command_buffer.begin_primary(CommandBufferFlags::ONE_TIME_SUBMIT);
+
+                    command_buffer.set_viewports(0, iter::once(viewport.clone()));
+                    command_buffer.set_scissors(0, iter::once(viewport.rect));
+
+                    command_buffer.begin_render_pass(
+                        render_pass,
+                        &framebuffer,
+                        viewport.rect,
+                        iter::once(
+                            RenderAttachmentInfo {
+                                image_view: surface_image2.borrow(),
+                                clear_value: ClearValue {
+                                    color: ClearColor{
+                                        float32:[0.0,0.0,0.0,1.0],
+                                    }
+                                }
+                            }
+                        ),
+                        SubpassContents::Inline,
+                    );
+                    command_buffer.bind_graphics_pipeline(pipeline);
+                    command_buffer.draw(0..3, 0..1); // insatnces used for gpu instance
+                    command_buffer.end_render_pass();
+                    command_buffer.finish();
+                }
+
+                unsafe {
+
+                    queue.queues[0].submit(iter::once(&command_buffer), iter::empty(), iter::once(&res.rendering_complete_semaphore), Some(&mut res.submission_complete_fence));
+
+                    //call present ,then finished with a image to screen
+                    let result = queue.queues[0].present(&mut res.surface, surface_image2, Some(&mut res.rendering_complete_semaphore));
+
+                    should_configure_swapchain |= result.is_err();
+
+                    // why cache buffer?
+                    res.device.destroy_framebuffer(framebuffer);
+                }
             },
             _ => (),
         }
@@ -212,10 +372,50 @@ struct Resources<B:gfx_hal::Backend> {
     pipelines:Vec<B::GraphicsPipeline>,
     command_pool:B::CommandPool,
     submission_complete_fence:B::Fence,
-    rendering_complete_seraphore:B::Semaphore,
+    rendering_complete_semaphore:B::Semaphore,
+}
+struct ResourcesHolder<B:gfx_hal::Backend>(ManuallyDrop<Resources<B>>);
+
+impl<B:gfx_hal::Backend> Drop for ResourcesHolder<B>{
+    fn drop(&mut self) {
+        unsafe {
+            let Resources {
+                instance,
+                mut surface,
+                device,
+                render_passes,
+                pipeline_layouts,
+                pipelines,
+                command_pool,
+                submission_complete_fence,
+                rendering_complete_semaphore,
+            } = ManuallyDrop::take(&mut self.0);
+            // destroy things by order.
+            device.destroy_semaphore(rendering_complete_semaphore);
+            device.destroy_fence(submission_complete_fence);
+
+            for pipeline in pipelines{
+                device.destroy_graphics_pipeline(pipeline);
+            }
+            for pipeline_layout in pipeline_layouts{
+                device.destroy_pipeline_layout(pipeline_layout);
+            }
+            for render_pass in render_passes{
+                device.destroy_render_pass(render_pass);
+            }
+            device.destroy_command_pool(command_pool);
+            // surface should first unconfigure the swapchain
+            surface.unconfigure_swapchain(&device);
+            // surface in fact is as the father of device
+            // instance -> surface\adapter
+            // adapter -> device\queue family
+            instance.destroy_surface(surface);
+        }
+    }
 }
 
 fn compile_shader<B:gfx_hal::Backend>(device:&B::Device,glslpath:&str) -> Result<B::ShaderModule,ShaderError>{
+    println!("{}",glslpath);
     let mut file = std::fs::File::open(glslpath).unwrap();
 
     let spirv = 
