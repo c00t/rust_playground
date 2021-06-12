@@ -151,14 +151,25 @@ fn main() {
 
     // Then define our rendering pipeline, 
     let pipeline_layout = unsafe {
+        //part2
+        use gfx_hal::pso::ShaderStageFlags;
+        let push_constant_bytes = std::mem::size_of::<PushConstants>() as u32;
         device
-            .create_pipeline_layout(iter::empty(), iter::empty())
+            .create_pipeline_layout(iter::empty(), iter::once((ShaderStageFlags::VERTEX,0..push_constant_bytes)))
             .expect("Out of memory.")
+
+        //part1
+        // device
+        //     .create_pipeline_layout(iter::empty(), iter::empty())
+        //     .expect("Out of memory.")
     };
 
     // get the pipeline
     let pipeline = unsafe {
-        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag.spv").unwrap())
+        //part1
+        // make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert1.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag1.spv").unwrap())
+        //part2
+        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert2.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag2.spv").unwrap())
     };
 
     // sync primitives
@@ -179,7 +190,12 @@ fn main() {
             rendering_complete_semaphore,
         }));
     
-    
+    //part2
+    //create a time parameter
+    let start_time = std::time::Instant::now();
+
+    //part2
+
     // Note that this takes a `move` closure. This means it will take ownership
     // over any resources referenced within. It also means they will be dropped
     // only when the application is quit.
@@ -215,6 +231,56 @@ fn main() {
                 let res:&mut Resources<_> = &mut resources_holder.0;
                 let render_pass = & res.render_passes[0];
                 let pipeline = & res.pipelines[0];
+
+                //part2
+                //use pipeline layout to tell render pass should use which data in specific shader stage
+                let pipeline_layout = & res.pipeline_layouts[0];
+
+                //prepare some vertex specific data to use, animated
+                let anim = start_time.elapsed().as_secs_f32().sin()*0.5 + 0.5;
+
+                let small = [0.33,0.33];//scale
+
+                let triangles = &[
+                    // Red triangle
+                    PushConstants {
+                        color: [1.0, 0.0, 0.0, 1.0],
+                        pos: [-0.5, -0.5],
+                        scale: small,
+                    },
+                    // Green triangle
+                    PushConstants {
+                        color: [0.0, 1.0, 0.0, 1.0],
+                        pos: [0.0, -0.5],
+                        scale: small,
+                    },
+                    // Blue triangle
+                    PushConstants {
+                        color: [0.0, 0.0, 1.0, 1.0],
+                        pos: [0.5, -0.5],
+                        scale: small,
+                    },
+                    // Blue <-> cyan animated triangle
+                    PushConstants {
+                        color: [0.0, anim, 1.0, 1.0],
+                        pos: [-0.5, 0.5],
+                        scale: small,
+                    },
+                    // Down <-> up animated triangle
+                    PushConstants {
+                        color: [1.0, 1.0, 1.0, 1.0],
+                        pos: [0.0, 0.5 - anim * 0.5],
+                        scale: small,
+                    },
+                    // Small <-> big animated triangle
+                    PushConstants {
+                        color: [1.0, 1.0, 1.0, 1.0],
+                        pos: [0.5, 0.5],
+                        scale: [0.33 + anim * 0.33, 0.33 + anim * 0.33],
+                    },
+                ];
+                //part2
+
 
                 // first use of fence
                 // reset our command buffer
@@ -337,7 +403,22 @@ fn main() {
                         SubpassContents::Inline,
                     );
                     command_buffer.bind_graphics_pipeline(pipeline);
-                    command_buffer.draw(0..3, 0..1); // insatnces used for gpu instance
+
+                    //part1
+                    // command_buffer.draw(0..3, 0..1); // insatnces used for gpu instance
+                    //part1
+
+                    //part2
+                    // now render more triangles
+                    for triangle in triangles {
+                        use gfx_hal::pso::ShaderStageFlags;
+
+                        command_buffer.push_graphics_constants(pipeline_layout, ShaderStageFlags::VERTEX, 0, push_constant_bytes(triangle));
+
+                        command_buffer.draw(0..3,0..1);
+                    }
+                    //part2
+
                     command_buffer.end_render_pass();
                     command_buffer.finish();
                 }
@@ -361,6 +442,24 @@ fn main() {
 
 
 }
+//part2: define push constant structure
+#[repr(C)]
+#[derive(Debug,Clone, Copy)]
+struct PushConstants{
+    color:[f32;4],
+    pos:[f32;2],
+    scale:[f32;2],
+}
+// return memory len/map aligned with 32bit
+unsafe fn push_constant_bytes<T>(push_constants:&T) -> &[u32]{
+    let size_in_byte = std::mem::size_of::<T>();
+    let size_in_u32s = size_in_byte/std::mem::size_of::<u32>();
+
+    let start_ptr = push_constants as *const T as *const u32;
+
+    std::slice::from_raw_parts(start_ptr,size_in_u32s)
+}
+//part2
 
 // Create a Struct to store many resources
 struct Resources<B:gfx_hal::Backend> {
