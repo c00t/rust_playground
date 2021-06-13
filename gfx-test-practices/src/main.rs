@@ -151,12 +151,20 @@ fn main() {
 
     // Then define our rendering pipeline, 
     let pipeline_layout = unsafe {
-        //part2
+        //part3
         use gfx_hal::pso::ShaderStageFlags;
-        let push_constant_bytes = std::mem::size_of::<PushConstants>() as u32;
+        let push_constant_bytes = std::mem::size_of::<PushConstantsMatrix>() as u32;
         device
             .create_pipeline_layout(iter::empty(), iter::once((ShaderStageFlags::VERTEX,0..push_constant_bytes)))
             .expect("Out of memory.")
+        //part3
+        
+        //part2
+        // use gfx_hal::pso::ShaderStageFlags;
+        // let push_constant_bytes = std::mem::size_of::<PushConstants>() as u32;
+        // device
+        //     .create_pipeline_layout(iter::empty(), iter::once((ShaderStageFlags::VERTEX,0..push_constant_bytes)))
+        //     .expect("Out of memory.")
 
         //part1
         // device
@@ -169,12 +177,45 @@ fn main() {
         //part1
         // make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert1.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag1.spv").unwrap())
         //part2
-        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert2.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag2.spv").unwrap())
+        //make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert2.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag2.spv").unwrap())
+        //part3
+        make_pipeline::<back::Backend>(&device, &render_pass, &pipeline_layout, compile_shader::<back::Backend>(&device,"shaders/vert3.spv").unwrap(), compile_shader::<back::Backend>(&device,"shaders/frag3.spv").unwrap())
+
     };
 
     // sync primitives
     let submission_complete_fence = device.create_fence(true).expect("Out of memeory");
     let rendering_complete_semaphore = device.create_semaphore().expect("Out of memory");
+
+    //part3
+    //load vertex data
+    let binary_mesh_data = include_bytes!("../meshes/teapot_mesh.bin"); //include binary data inside exe
+    let mesh: Vec<Vertex> =
+        bincode::deserialize(binary_mesh_data).expect("Failed to deserized mesh.");
+    //make a buffer
+    let vertex_buffer_len = mesh.len() * std::mem::size_of::<Vertex>();
+    let (mut vertex_buffer_memory,vertex_buffer) = unsafe {
+        use gfx_hal::buffer::Usage;
+        use gfx_hal::memory::Properties;
+        // move up avoid device moved here.
+        // GPU_VISIBLE: writable from CPU side.
+        make_buffer::<back::Backend>(&device, &adapter.physical_device, vertex_buffer_len, Usage::VERTEX, Properties::CPU_VISIBLE)
+    };
+
+    //copy the vertex data into empty buffer
+    unsafe {
+        use gfx_hal::memory::Segment;
+        let mapped_memory = device
+            .map_memory(&mut vertex_buffer_memory, Segment::ALL)
+            .expect("Failed to map memory");
+        std::ptr::copy_nonoverlapping(mesh.as_ptr() as *const u8,mapped_memory,vertex_buffer_len);
+        device
+            .flush_mapped_memory_ranges(iter::once((&vertex_buffer_memory,Segment::ALL)))
+            .expect("Failed to Flush Memory.");
+
+        device.unmap_memory(&mut vertex_buffer_memory);
+    }
+    //part3
 
     //create ResourcesHolder
     let mut resources_holder : ResourcesHolder<back::Backend> = 
@@ -188,13 +229,18 @@ fn main() {
             command_pool,
             submission_complete_fence,
             rendering_complete_semaphore,
+            //part3
+            vertex_buffer,
+            vertex_buffer_memory,
+            //part3
         }));
     
     //part2
     //create a time parameter
     let start_time = std::time::Instant::now();
-
     //part2
+
+
 
     // Note that this takes a `move` closure. This means it will take ownership
     // over any resources referenced within. It also means they will be dropped
@@ -237,49 +283,57 @@ fn main() {
                 let pipeline_layout = & res.pipeline_layouts[0];
 
                 //prepare some vertex specific data to use, animated
-                let anim = start_time.elapsed().as_secs_f32().sin()*0.5 + 0.5;
+                // let anim = start_time.elapsed().as_secs_f32().sin()*0.5 + 0.5;
 
-                let small = [0.33,0.33];//scale
+                // let small = [0.33,0.33];//scale
 
-                let triangles = &[
-                    // Red triangle
-                    PushConstants {
-                        color: [1.0, 0.0, 0.0, 1.0],
-                        pos: [-0.5, -0.5],
-                        scale: small,
-                    },
-                    // Green triangle
-                    PushConstants {
-                        color: [0.0, 1.0, 0.0, 1.0],
-                        pos: [0.0, -0.5],
-                        scale: small,
-                    },
-                    // Blue triangle
-                    PushConstants {
-                        color: [0.0, 0.0, 1.0, 1.0],
-                        pos: [0.5, -0.5],
-                        scale: small,
-                    },
-                    // Blue <-> cyan animated triangle
-                    PushConstants {
-                        color: [0.0, anim, 1.0, 1.0],
-                        pos: [-0.5, 0.5],
-                        scale: small,
-                    },
-                    // Down <-> up animated triangle
-                    PushConstants {
-                        color: [1.0, 1.0, 1.0, 1.0],
-                        pos: [0.0, 0.5 - anim * 0.5],
-                        scale: small,
-                    },
-                    // Small <-> big animated triangle
-                    PushConstants {
-                        color: [1.0, 1.0, 1.0, 1.0],
-                        pos: [0.5, 0.5],
-                        scale: [0.33 + anim * 0.33, 0.33 + anim * 0.33],
-                    },
-                ];
+                // let triangles = &[
+                //     // Red triangle
+                //     PushConstants {
+                //         color: [1.0, 0.0, 0.0, 1.0],
+                //         pos: [-0.5, -0.5],
+                //         scale: small,
+                //     },
+                //     // Green triangle
+                //     PushConstants {
+                //         color: [0.0, 1.0, 0.0, 1.0],
+                //         pos: [0.0, -0.5],
+                //         scale: small,
+                //     },
+                //     // Blue triangle
+                //     PushConstants {
+                //         color: [0.0, 0.0, 1.0, 1.0],
+                //         pos: [0.5, -0.5],
+                //         scale: small,
+                //     },
+                //     // Blue <-> cyan animated triangle
+                //     PushConstants {
+                //         color: [0.0, anim, 1.0, 1.0],
+                //         pos: [-0.5, 0.5],
+                //         scale: small,
+                //     },
+                //     // Down <-> up animated triangle
+                //     PushConstants {
+                //         color: [1.0, 1.0, 1.0, 1.0],
+                //         pos: [0.0, 0.5 - anim * 0.5],
+                //         scale: small,
+                //     },
+                //     // Small <-> big animated triangle
+                //     PushConstants {
+                //         color: [1.0, 1.0, 1.0, 1.0],
+                //         pos: [0.5, 0.5],
+                //         scale: [0.33 + anim * 0.33, 0.33 + anim * 0.33],
+                //     },
+                // ];
                 //part2
+
+                //part3
+                let angle = start_time.elapsed().as_secs_f32();
+
+                let teapots = &[
+                    PushConstantsMatrix::make_transform([0.,0.,0.5], angle, 1.0)
+                ];
+                //part3
 
 
                 // first use of fence
@@ -386,6 +440,12 @@ fn main() {
                     command_buffer.set_viewports(0, iter::once(viewport.clone()));
                     command_buffer.set_scissors(0, iter::once(viewport.rect));
 
+                    //part3
+                    command_buffer.bind_vertex_buffers(0,
+                        iter::once((&res.vertex_buffer,gfx_hal::buffer::SubRange::WHOLE))
+                    );
+                    //part3
+
                     command_buffer.begin_render_pass(
                         render_pass,
                         &framebuffer,
@@ -410,14 +470,27 @@ fn main() {
 
                     //part2
                     // now render more triangles
-                    for triangle in triangles {
+                    // for triangle in triangles {
+                    //     use gfx_hal::pso::ShaderStageFlags;
+
+                    //     command_buffer.push_graphics_constants(pipeline_layout, ShaderStageFlags::VERTEX, 0, push_constant_bytes(triangle));
+
+                    //     command_buffer.draw(0..3,0..1);
+                    // }
+                    //part2
+
+                    //part3
+                    //draw all triangles in teapots
+                    for teapot in teapots {
                         use gfx_hal::pso::ShaderStageFlags;
 
-                        command_buffer.push_graphics_constants(pipeline_layout, ShaderStageFlags::VERTEX, 0, push_constant_bytes(triangle));
+                        command_buffer.push_graphics_constants(&pipeline_layout,ShaderStageFlags::VERTEX, 0, push_constant_bytes(teapot));
 
-                        command_buffer.draw(0..3,0..1);
+                        let vertex_count = mesh.len() as u32;
+
+                        command_buffer.draw(0..vertex_count, 0..1)
                     }
-                    //part2
+                    //part3
 
                     command_buffer.end_render_pass();
                     command_buffer.finish();
@@ -442,6 +515,80 @@ fn main() {
 
 
 }
+//part3
+use serde;
+#[derive(serde::Deserialize)]
+#[repr(C)]
+struct Vertex {
+    position:[f32;3],
+    normal:[f32;3],
+}
+/// Buffers can be used for various things. The `usage` parameter defines
+/// how the buffer should be treated (vertex buffer, index buffer, etc).
+/// The `properties` specify the kind of memory that should be used to
+/// store this buffer (CPU visible, device local, etc).
+unsafe fn make_buffer<B:gfx_hal::Backend>(
+    device:&B::Device,
+    physical_device:&B::PhysicalDevice,
+    buffer_len:usize,
+    usage:gfx_hal::buffer::Usage,
+    properties:gfx_hal::memory::Properties,
+) -> (B::Memory,B::Buffer) {
+    use gfx_hal::{adapter::PhysicalDevice,MemoryTypeId};
+    use gfx_hal::memory;
+
+    let mut buffer = device
+        .create_buffer(buffer_len as u64, usage, memory::SparseFlags::empty())
+        .expect("Failed to create buffer.");
+    let req = device.get_buffer_requirements(&buffer);
+
+    let memory_types = physical_device.memory_properties().memory_types;
+
+    let memory_type = memory_types
+        .iter()
+        .enumerate()
+        .find(|(id,mem_type)| {
+            let type_support = req.type_mask & (1_u32<<id) != 0;
+            type_support && mem_type.properties.contains(properties)
+        })
+        .map(|(id,_ty)| MemoryTypeId(id))
+        .expect("No Compatible memeory found.");
+    
+    let memory_buffer = device
+        .allocate_memory(memory_type, req.size)
+        .expect("Failed to allocate buffer memory.");
+
+    device
+        .bind_buffer_memory(&memory_buffer, 0, &mut buffer)
+        .expect("Failed to bind bufer memory.");
+    
+    (memory_buffer,buffer)
+}
+
+#[repr(C)]
+#[derive(Debug,Clone, Copy)]
+struct PushConstantsMatrix{
+    transform:[[f32;4];4],
+}
+//a helper function to create those transformation matrix
+impl PushConstantsMatrix{
+    fn make_transform(translate:[f32;3],angle:f32,scale:f32) -> PushConstantsMatrix{
+        let c = angle.cos() * scale;
+        let s = angle.sin() * scale;
+        let [dx,dy,dz] = translate;
+        PushConstantsMatrix {
+            transform:[
+                [ c ,  0. ,    s ,  0. ],
+                [ 0. , scale , 0. , 0. ],
+                [ -s , 0. ,    c ,  0. ],
+                [ dx , dy ,    dz , 1. ],
+            ]
+        }
+    }
+}
+//part3
+
+
 //part2: define push constant structure
 #[repr(C)]
 #[derive(Debug,Clone, Copy)]
@@ -472,6 +619,12 @@ struct Resources<B:gfx_hal::Backend> {
     command_pool:B::CommandPool,
     submission_complete_fence:B::Fence,
     rendering_complete_semaphore:B::Semaphore,
+
+    //part3
+    //add buffer and buffer_memory
+    vertex_buffer:B::Buffer,
+    vertex_buffer_memory:B::Memory,
+    //part3
 }
 struct ResourcesHolder<B:gfx_hal::Backend>(ManuallyDrop<Resources<B>>);
 
@@ -488,7 +641,18 @@ impl<B:gfx_hal::Backend> Drop for ResourcesHolder<B>{
                 command_pool,
                 submission_complete_fence,
                 rendering_complete_semaphore,
+                //part3
+                vertex_buffer,
+                vertex_buffer_memory,
+                //part3
             } = ManuallyDrop::take(&mut self.0);
+
+            //part3
+            // free vertex buffer is disorder with else things
+            device.free_memory(vertex_buffer_memory);
+            device.destroy_buffer(vertex_buffer);
+            //part3
+
             // destroy things by order.
             device.destroy_semaphore(rendering_complete_semaphore);
             device.destroy_fence(submission_complete_fence);
@@ -537,6 +701,9 @@ unsafe fn make_pipeline<B:gfx_hal::Backend>( // Generic over any backends.
         InputAssemblerDesc, Primitive, PrimitiveAssemblerDesc, Rasterizer, Specialization,
     };
     
+
+
+
     // The EntryPoint struct is exactly what it sounds like - it defines how your shader begins executing.
     let (vs_entry,fs_entry) : (EntryPoint<'_, B>, EntryPoint<'_, B>)= (
         EntryPoint{
@@ -553,14 +720,52 @@ unsafe fn make_pipeline<B:gfx_hal::Backend>( // Generic over any backends.
 
     // Define a primitive assembler, take vertices -> output primitives(some triangles)
     // Here we define every stages used in graphic pipeline.
-    let primitive_assembler = PrimitiveAssemblerDesc::Vertex{
-        buffers:&[],
-        attributes:&[],
-        input_assembler:InputAssemblerDesc::new(Primitive::TriangleList),
-        vertex:vs_entry,
-        tessellation:None,
-        geometry:None,
+    //part1&2
+    // let primitive_assembler = PrimitiveAssemblerDesc::Vertex{
+    //     buffers:&[],
+    //     attributes:&[],
+    //     input_assembler:InputAssemblerDesc::new(Primitive::TriangleList),
+    //     vertex:vs_entry,
+    //     tessellation:None,
+    //     geometry:None,
+    // };
+    //part1&2
+
+    //part3
+    let primitive_assembler = {
+        use gfx_hal::format::Format;
+        use gfx_hal::pso::{AttributeDesc,Element,VertexBufferDesc,VertexInputRate};    
+        PrimitiveAssemblerDesc::Vertex{
+            buffers: &[VertexBufferDesc{
+                binding: 0, //binding id
+                stride: std::mem::size_of::<Vertex>() as u32,
+                rate: VertexInputRate::Vertex,
+            }],
+            attributes: &[ //two attributes: position and normal
+                AttributeDesc{
+                    location: 0,
+                    binding: 0,
+                    element: Element{
+                        format:Format::Rgb32Sfloat,
+                        offset:0,
+                    },
+                },
+                AttributeDesc{
+                    location:1,
+                    binding:0,
+                    element:Element{
+                        format:Format::Rgb32Sfloat,
+                        offset:12, //normal behind the position
+                    },
+                },
+            ],
+            input_assembler: InputAssemblerDesc::new(Primitive::TriangleList),
+            vertex: vs_entry,
+            tessellation: None,
+            geometry: None,
+        }
     };
+    //part3
 
     // configure the pipeline
     let mut pipeline_desc = GraphicsPipelineDesc::new(

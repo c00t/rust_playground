@@ -16,7 +16,8 @@ gfx-hal = "*"
 gfx-backend-empty = "*"
 # shaderc = "0.7" use shaderc need cross-compile
 gfx-auxil = "*"
-
+serde = { version = "*" , features = ["derive"] }
+bincode = "*"
 
 [target.'cfg(windows)'.dependencies.gfx-backend-dx12]
 package = "gfx-backend-dx12"
