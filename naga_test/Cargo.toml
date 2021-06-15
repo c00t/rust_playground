@@ -8,4 +8,4 @@ edition = "2018"
 
 
 [dependencies]
-naga = {version = "*", features=["wgsl-in","spv-out"]}
+naga = {version = "*", features=["wgsl-in", "wgsl-out", "glsl-in", "glsl-out", "spv-in", "spv-out", "msl-out", "hlsl-out", "dot-out", "glsl-validate"]}

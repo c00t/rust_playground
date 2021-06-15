@@ -1,7 +1,7 @@
 use std::fs;
 
 fn main() {
-    let input = fs::read_to_string("shaders/test1.wgsl").unwrap();
+    let input = fs::read_to_string("shaders/quad.wgsl").unwrap();
     let result = naga::front::wgsl::parse_str(&input);
     let module = match result {
         Ok(v) => v,
@@ -12,16 +12,16 @@ fn main() {
     };
     //validate
     let info = match naga::valid::Validator::new(
-        naga::valid::ValidationFlags::BLOCKS
+        naga::valid::ValidationFlags::all()
     )
     .validate(&module)
     {
         Ok(info) => Some(info),
         Err(error) => {
-            None
+            panic!("Validation Error.");
         }
     };
-    println!("{:?}",info);
+    println!("{:#?}",info);
 
     use naga::back::spv;
     let spv_option:naga::back::spv::Options = Default::default();
@@ -34,7 +34,7 @@ fn main() {
             v.extend_from_slice(&w.to_le_bytes());
             v
         });
-    fs::write("shaders/test1.spv",bytes.as_slice()).unwrap();
+    fs::write("shaders/quad.spv",bytes.as_slice()).unwrap();
 
     //later, rewrite gfx-hal test shaders to verify the spv correctness. 
     
