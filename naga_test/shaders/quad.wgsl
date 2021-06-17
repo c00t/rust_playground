@@ -1,4 +1,5 @@
 // vertex
+// enable f16; // currently not support
 let c_scale: f32 = 1.2;
 
 struct VertexOutput {
