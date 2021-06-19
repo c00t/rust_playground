@@ -18,7 +18,7 @@ fn main() {
     let listener = TcpListener::bind("127.0.0.1:7876").unwrap();
     let pool = ThreadPool::new(4); // 
 
-    for stream in listener.incoming() {
+    for stream in listener.incoming().take(2) {
         let stream = stream.unwrap();
         
         println!("--Connection establish!--");
@@ -26,6 +26,8 @@ fn main() {
             handle_connection(stream); //Spawn a Thread for every request.
         });
     }
+
+    println!("Shutting Down.");
 }
 
 
