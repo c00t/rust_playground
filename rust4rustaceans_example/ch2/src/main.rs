@@ -73,3 +73,76 @@ fn replace_with_84(s:&mut Box<i32>){
     std::mem::swap(s, &mut r); // *r is 42, *s is 84
 
 }
+
+// sample code for lifetime 
+fn simple_sample_for_lifetime(){
+    let mut x = Box::new(42);
+    let r = &x; //'a
+    if 1.0 > 0.5{
+        *x = 84;
+        //auto deref to &mut, and check that no conflict here.
+        //because that r doesn't be used in this branch.
+        //compiler is smart enough.
+    }else{
+        println!("{}",r); //'a
+    }
+    // println!("{}",r);//'a 
+    // doesn't compile,the `lifetime` line will flow through two branchs, and conflict at `*x = 84`
+    // which use &mut
+    // 其实这也就解释了，为啥报错会报在*x=84这一行，按照每遇到一次引用就返回引用taken点的检查方法，
+    // 确实应该在*x = 84 这一行报出故障。
+}
+
+fn simple_sample_for_lifetime_more(){
+    let mut x = Box::new(42);
+    let mut z = &x; //'a1
+    for i in 0..100 {
+        println!("{}",z); //'a1,...,'a98 ,when checked, no confilict
+        x = Box::new(i); //'a1 end here, 'a2 end here, 'a98 end here,&mut
+        z = &x; //lifetime restart: 'a2 start here, and ends at above line in next loop. 'a99 start here
+    }
+    println!("{}",z); //'a99 end here
+}
+
+// multiple lifetimes
+// multiple references, returned value only tied to one of them.
+struct StrSplit<'s,'p>{
+    delimiter:&'p str,
+    document:&'s str,
+}
+impl<'s,'p> Iterator for StrSplit<'s,'p>{
+    type Item = &'s str;
+    // return type only rely on `document`
+    // we don't care about `delimiter`
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+fn str_defore(s:&str,c:char)->Option<&str>{
+    StrSplit{
+        document:s,
+        delimiter:&c.to_string(),
+    }.next()
+}
+
+// error example
+struct StrSplit2<'s>{
+    delimiter:&'s str,
+    document:&'s str,
+}
+impl<'s> Iterator for StrSplit2<'s>{
+    type Item = &'s str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+fn str_defore2(s:&str,c:char)->Option<&str>{
+    StrSplit2{
+        document:s,
+        delimiter:&c.to_string(),
+    }.next()
+    // flow from ( c -> <return value> ), borrow checker check that and reject. 
+    // lifetime of <s> and <return vlue> is the same.
+}
