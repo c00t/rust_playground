@@ -42,7 +42,62 @@ fn main() {
 
     let mut s = Box::new(42);
     replace_with_84(&mut s);
+
+    ref_mut_invariant();
+
+    variance_in_generic_lifetime();
 }
+//variance in generic lifetime
+struct MutStr<'a,'b>{
+    s: &'a mut &'b str
+    //这里使用了两个generic lifetime标记
+    //，乍一看我们并没有两个lifetime更改的需求。
+    //我们甚至并没有定义返回ref的函数。
+    //但是要是只用一个lifetime，那么就会报错
+    //1.首先由于struct定义中的任何引用都必须加上'lifetime标记
+}
+struct RefStr<'a>{
+    s:&'a &'a str,
+}
+fn variance_in_generic_lifetime(){
+    let mut s = "hello";
+    * MutStr{
+        s:&mut s
+    }.s = "world";
+    //在上面这一行，编译器就要决定其定义中的generic lifetime应该是啥
+    //使用两个lifetime时，
+    //'a被决定为&mut s这个引用的lifetime。
+    //'b被决定为’static，因为其内容"hello"是'static str.
+    //使用一个lifetime时，由于'static和‘a的关系，
+    //'a被决定为'static，即整个程序中一直存在的exclusive引用。
+    println!("{}",s);
+    //那么，再调用上面的引用时，使用了shared ref，
+    //而且，rust编译器默认的实现中，将&mut T实现为invariance
+    //如果没有&mut修饰的话，Rust能够将'static的lifetime缩减至'a
+    //最终的表现就是Rust无法将&mut s的lifetime缩减至&'a mut
+    //最终决定的lifetime为&'static mut
+    //就会出现报错，如果上面这一行没有的话，是不会出现报错的。
+}
+
+//&mut invariant usage
+struct TestInvariant{
+    x:i32,
+    y:i32,
+}
+static S1 : TestInvariant = TestInvariant{x:0,y:0};
+static S2 : TestInvariant =  TestInvariant{x:1,y:1};
+static S3 : TestInvariant =  TestInvariant{x:2,y:2};
+fn ref_mut_invariant(){
+    let s = TestInvariant{x:2,y:2};
+    let mut test_v = vec![&s];   
+    vec_lifetime_a_params(&mut test_v);
+}
+fn vec_lifetime_a_params<'a>(v:&mut Vec<&'a TestInvariant>){
+    v.push(&S3);
+}
+
+
+
 //self-references
 struct SelfR<'a>{
     str_ins:String,
@@ -126,6 +181,8 @@ fn str_defore(s:&str,c:char)->Option<&str>{
     }.next()
 }
 
+
+
 // error example
 struct StrSplit2<'s>{
     delimiter:&'s str,
@@ -138,11 +195,11 @@ impl<'s> Iterator for StrSplit2<'s>{
         todo!()
     }
 }
-fn str_defore2(s:&str,c:char)->Option<&str>{
-    StrSplit2{
-        document:s,
-        delimiter:&c.to_string(),
-    }.next()
-    // flow from ( c -> <return value> ), borrow checker check that and reject. 
-    // lifetime of <s> and <return vlue> is the same.
-}
+// fn str_defore2(s:&str,c:char)->Option<&str>{
+//     // StrSplit2{
+//     //     document:s,
+//     //     delimiter:&c.to_string(),
+//     // }.next()
+//     // flow from ( c -> <return value> ), borrow checker check that and reject. 
+//     // lifetime of <s> and <return vlue> is the same.
+// }
