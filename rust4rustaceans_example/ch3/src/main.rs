@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 fn main() {
     
 }
@@ -24,3 +26,40 @@ struct Foo{
 fn dsts_faults(){
     let x:(i32,dyn Iterator,[u8],i32);// err. Sized not implemented.
 }
+
+/// Use `Self:Sized` to limit trait objects
+trait qq where Self:Sized{
+    fn ss(){
+    }
+}
+fn ss_self_sized(s:&dyn qq){
+    //error: qq is not `object-safe`.
+}
+
+/// impl associated type generic trait(with multiple associated types) for Point
+struct Point{
+    x:i32,
+    y:i32,
+}
+trait ZZ {
+    type z;
+    type y;
+    fn zprint(&self,other:Self::z);
+}
+struct QQ(i32);
+struct BB(i32);
+impl ZZ for Point{
+    type z = QQ;
+    
+    fn zprint(&self,other:Self::z) {
+        todo!()
+    }
+}
+// will error here
+// impl ZZ for Point {
+//     type z = BB;
+
+//     fn zprint(&self,other:Self::z) {
+//         todo!()
+//     }
+// }
