@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::{Debug, Display}, hash::{BuildHasher, Hash}, iter::FromIterator};
 
 fn main() {
     
@@ -23,18 +23,18 @@ struct Foo{
 }
 
 /// DSTs fault
-fn dsts_faults(){
-    let x:(i32,dyn Iterator,[u8],i32);// err. Sized not implemented.
-}
+// fn dsts_faults(){
+//     let x:(i32,dyn Iterator,[u8],i32);// err. Sized not implemented.
+// }
 
 /// Use `Self:Sized` to limit trait objects
 trait qq where Self:Sized{
     fn ss(){
     }
 }
-fn ss_self_sized(s:&dyn qq){
-    //error: qq is not `object-safe`.
-}
+// fn ss_self_sized(s:&dyn qq){
+//     //error: qq is not `object-safe`.
+// }
 
 /// impl associated type generic trait(with multiple associated types) for Point
 struct Point{
@@ -48,13 +48,13 @@ trait ZZ {
 }
 struct QQ(i32);
 struct BB(i32);
-impl ZZ for Point{
-    type z = QQ;
+// impl ZZ for Point{
+//     type z = QQ;
     
-    fn zprint(&self,other:Self::z) {
-        todo!()
-    }
-}
+//     fn zprint(&self,other:Self::z) {
+//         todo!()
+//     }
+// }
 // will error here
 // impl ZZ for Point {
 //     type z = BB;
@@ -63,3 +63,70 @@ impl ZZ for Point{
 //         todo!()
 //     }
 // }
+
+/// 如果我们想要构建一个返回`HashMap<K,V,S>`，其中key的类型是T，value的类型是usize
+/// 的函数, 方法1 和 方法2 
+fn get_hashmap_2_traitbounds<T,S>(x:HashMap<T,usize,S>)
+where T:Hash+Eq,S:BuildHasher+Default
+{
+    let mut x = HashMap::new();
+    
+    x.insert("k", 123 as usize);
+    let x = get_hashmap_1_traitbounds(x);
+}
+
+fn get_hashmap_1_traitbounds<T,S>(x:HashMap<T,usize,S>) -> HashMap<T,usize,S>
+where HashMap<T,usize,S>:FromIterator<(T,usize)>
+{
+    x
+}
+
+fn get_hashmap_error_traitbounds<T,S>(x:(T,usize)) -> HashMap<T,usize,S>
+where
+    T:Clone+Eq+Hash,
+    S:BuildHasher+Default
+{
+    let five_fives = std::iter::repeat(x).take(5);
+    HashMap::from_iter(five_fives)
+}
+
+fn get_hashmap_correct_traitbounds<T,S>(x:(T,usize)) -> HashMap<T,usize,S>
+where
+    HashMap<T,usize,S>:FromIterator<(T,usize)>,
+    T:Clone
+{
+    let five_fives = std::iter::repeat(x).take(5);
+    HashMap::from_iter(five_fives)
+}
+
+/// Advanced&Advanced Trait Bounds
+struct AnyIterator<T>{
+    x:T,
+}
+impl<T> Iterator for AnyIterator<T>{
+    type Item=T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+//Wrong implmentation
+// impl<T> Debug for AnyIterator<T>
+// where
+//     Self:IntoIterator,
+//     <Self as IntoIterator>::Item : Debug
+// {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_list().entries(self).finish()
+//     }
+// }
+//Correct Implmentation
+impl<T> Debug for AnyIterator<T>
+where
+    for<'a> &'a Self:IntoIterator,
+    for<'a> <&'a Self as IntoIterator>::Item : Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self).finish()
+    }
+}
