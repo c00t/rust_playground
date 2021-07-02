@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::{Debug, Display}, hash::{BuildHasher, Hash}, iter::FromIterator};
+use std::{collections::{HashMap, binary_heap::Iter}, fmt::{Debug, Display}, hash::{BuildHasher, Hash}, iter::FromIterator};
 
 fn main() {
     
@@ -130,3 +130,35 @@ where
         f.debug_list().entries(self).finish()
     }
 }
+
+/// impl IntoIterator
+struct XXX{
+
+}
+// unstable usage
+impl IntoIterator for XXX  
+{
+    type Item = i32;
+
+    type IntoIter = impl Iterator<Item = Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        vec![1,2,3].into_iter()
+    }
+}
+
+/// impl Trait and generic types, isomorphic
+fn test(){
+    //you can use turbofish ::<S> in generic trait
+    genreic_trait::<Vec<i32>>(vec![1,2,3]); 
+    //can't use this syntax in impl Trait
+    impl_traits::<Vec<i32>>(vec![1,2,3]);
+}
+fn impl_traits(x:impl PartialEq){
+
+}
+fn genreic_trait<T:PartialEq>(x:T){
+
+}
+//RFC 2071#
+existential type Adder: Fn(usize) -> usize;
