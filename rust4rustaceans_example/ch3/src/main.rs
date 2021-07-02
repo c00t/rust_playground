@@ -160,5 +160,15 @@ fn impl_traits(x:impl PartialEq){
 fn genreic_trait<T:PartialEq>(x:T){
 
 }
+// RFC 1522 usage example
+fn foo(n:u32) -> impl Iterator<Item = u32>{
+    (0..n).map(|x| x*100)
+}
+fn use_foo(){
+    for x in foo(10){
+        //x=0,100,200,...
+    }
+}
+
 //RFC 2071#
-existential type Adder: Fn(usize) -> usize;
+//existential type Adder: Fn(usize) -> usize;
