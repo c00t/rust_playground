@@ -215,6 +215,6 @@ fn test_animal_inheritance(t:&Animal){
 }
 fn test_something_like_inheritance(){
     let x = Dog::new(1);
-    println!("{}",*x.0);
+    println!("{}",(x.0).0);
     test_animal_inheritance(&x);
 }
