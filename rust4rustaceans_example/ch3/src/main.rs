@@ -1,7 +1,7 @@
-use std::{collections::{HashMap, binary_heap::Iter}, fmt::{Debug, Display}, hash::{BuildHasher, Hash}, iter::FromIterator};
+use std::{char::DecodeUtf16, collections::{HashMap, binary_heap::Iter}, fmt::{Debug, Display}, hash::{BuildHasher, Hash}, iter::FromIterator, ops::Deref};
 
 fn main() {
-    
+    test_something_like_inheritance();
 }
 
 /// Layout
@@ -172,3 +172,49 @@ fn use_foo(){
 
 //RFC 2071#
 //existential type Adder: Fn(usize) -> usize;
+
+/// impl Trait for Bar != impl Trait for &Bar
+trait CommonTrait {
+    fn common(&mut self){
+        todo!()
+    }
+}
+struct Bar(i32);
+fn use_trait_for_refs(t:impl CommonTrait){
+
+}
+fn test_impl_trait_for_bar_and_ref_bar(){
+    let a = Bar(2);
+    // below trait bounds not satisfied.
+    use_trait_for_refs(&a);
+}
+
+/// Something like inheritance
+struct Dog(Animal);
+struct Animal(i32);
+impl Deref for Dog {
+    type Target = Animal;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Deref for Animal{
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Dog {
+    fn new(x:i32)-> Dog{
+        Dog(Animal(x))
+    }
+}
+fn test_animal_inheritance(t:&Animal){
+    println!("{}",t.0);
+}
+fn test_something_like_inheritance(){
+    let x = Dog::new(1);
+    println!("{}",*x.0);
+    test_animal_inheritance(&x);
+}
