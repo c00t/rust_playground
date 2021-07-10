@@ -158,3 +158,61 @@ impl<State> Rocket<State>{
         todo!()
     }
 }
+
+/// tyeps modification
+// in interface code, add a private fields `field` 
+pub struct Unit{
+    field:bool,
+}
+// in interface code, implementation of `Unit` 
+impl Unit {
+    
+}
+
+/// annotation of #[non_exhaustive]
+/// but within defining crate, non_exhaustive has no effect
+#[non_exhaustive]
+struct TestNonExhaustiveAnnotation{
+    x:i32,
+    y:i32,
+}
+struct TestExhaustiveAnnotation{
+    x:i32,
+    y:i32,
+}
+fn test_non_annotation(){
+    let x = TestNonExhaustiveAnnotation{
+        x:1,
+        y:1,
+    };
+}
+
+/// simulate trait implementation breaking changes
+// if interface code define that
+struct KK{}
+trait Foo1 {
+    fn foo(&self){
+
+    }
+}
+// then interface add a implementation of Foo1 for KK
+impl Foo1 for KK{
+    fn foo(&self){
+
+    }
+}
+// if user code define that
+// use {KK,Foo1} // remember that you can't use a trait if it isn't used in path.
+trait Foo2 {
+    fn foo(&self){
+
+    }
+}
+impl Foo2 for KK{
+    fn foo(&self){
+
+    }
+}
+// then if we call kk.foo(), what method we called? just compile with `ambiguous` error.
+
+/// sealed traits
