@@ -16,7 +16,7 @@ fn frobnicate1(s: String) -> String{
     s + "-frobnicate1"
 }
 // require caller own the data:String，return a owned data:String.
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Display};
 fn frobnicate2(s: &str) -> Cow<'_, str>{
     Cow::from(String::from(s) + "-frobnicate2")
 }
@@ -216,3 +216,31 @@ impl Foo2 for KK{
 // then if we call kk.foo(), what method we called? just compile with `ambiguous` error.
 
 /// sealed traits
+trait X {
+    
+}
+mod sealed{
+    use super::*;
+    pub trait Sealed{}
+    impl<T> Sealed for T where T:X{}
+}
+pub trait CanUseCannotImplement:sealed::Sealed{
+
+}
+impl<T> CanUseCannotImplement for T where T:X{
+
+}
+
+/// use test to check types implement some traits that we expect
+fn is_normal<T:Sized+Send+Sync+Unpin>(){}
+struct TestTypeWithoutDyn{
+    x:i32,
+}
+struct TestTypeWithDyn{
+    x:dyn Display
+}
+#[test]
+fn normal_types(){
+    is_normal::<TestTypeWithoutDyn>();
+    is_normal::<TestTypeWithDyn>();
+}
