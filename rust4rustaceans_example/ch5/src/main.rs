@@ -1,8 +1,10 @@
+
 fn main() {
-    println!("Hello, world!");
+    //println!("Hello, world!");
+    test_typeid_of_generic_usage();
 }
 /// `Enum` Error Representation for 'Copy from input stream to output stream'
-use std::{error::Error, fmt::{Debug, Display}};
+use std::{any::TypeId, error::Error, fmt::{Debug, Display}};
 enum CopyError {
     In(std::io::Error),
     Out(std::io::Error),
@@ -43,4 +45,24 @@ impl Debug for CopyError{
             },
         }
     }
+}
+
+/// test TypeId::of<T> usage
+fn test_typeid_of_generic_usage(){
+    println!("{:?}",TypeId::of::<String>())
+}
+
+/// pattern matching with never type `!`
+fn test_pattern_matching_with_never(){
+    match return_result_never() {
+        Ok(x) => {
+            println!("{}",x)
+        },
+        _ =>{}
+    }
+}
+// ! is experimental?
+// #![feature(never_type)] must be used in nightly release. 
+fn return_result_never()->Result<i32,!>{
+    Ok(1)
 }
