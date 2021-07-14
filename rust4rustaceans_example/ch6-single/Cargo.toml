@@ -1,0 +1,19 @@
+[package]
+name = "ch6-single"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+derive = ["syn"]
+default = ["derive"]
+
+# [dependencies]
+# syn = { version = "1" , optional = true }
+
+[dependencies.syn]
+version = "1"
+default-features = false
+features = ["derive","parsing","printing"]
+optional = true
