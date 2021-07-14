@@ -87,13 +87,20 @@ struct TryWithResources{
     handle:i32,
 }
 impl TryWithResources{
-    fn setup(&self)->i32{
-        1
+    fn setup(&self)->Result<i32,Box<dyn Error>>{
+        Ok(1)
     }
     fn cleanup(&mut self){
 
     }
 }
-fn test_try_blocks(){
-    
+fn test_try_blocks()->Result<(),Box<dyn Error>>{
+    let x = TryWithResources{handle:1};
+    let y = x.setup()?;
+    // try 正在实验中
+    let r = try {
+        x.setup()?
+    };
+    x.cleanup();
+    r//这里是重点
 }
