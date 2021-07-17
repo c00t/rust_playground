@@ -5,7 +5,8 @@ mod tests {
         assert_eq!(2 + 2, 4);
     }
 }
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 fn debug_code(){
     println!("Compiled while debug_assertions enbaled.");
+    debug_assert!(true);
 }

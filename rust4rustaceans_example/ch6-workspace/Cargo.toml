@@ -5,3 +5,4 @@ members = [
     "bar/one",
     "bar/two",
 ]
+default-run = "foo"
