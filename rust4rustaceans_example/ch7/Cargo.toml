@@ -7,6 +7,9 @@ edition = "2018"
 
 [dependencies]
 
+[dev-dependencies]
+mockall = "0.10.2"
+
 [[test]]
 name = "custom"
 path = "tests/custom.rs"
