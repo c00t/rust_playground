@@ -10,7 +10,29 @@
 /// ```
 /// 
 /// In the second example we create a Helper instance, and test the `return Result` usage.
+/// ```
+/// # use ch7::Helper;
+/// # use std::error::Error;
+/// # let x = Helper{
+/// #     x:"0".parse()?,
+/// # };
+/// assert!(x.print_and_return_err_if_1().is_ok());
+/// # Ok::<(),Box<dyn Error>>(())
+/// ```
 /// 
+/// In the Third example we create a Helper instance, and test the block replace usage.
+/// 这种方式无法使用，可以看作用来隐藏注释的东西。
+/// ```compile_fail
+/// # /*
+/// use ch7::Helper;
+/// use std::error::Error;
+/// let x = Helper{
+///     x:"0".parse()?,
+/// };
+/// # */
+/// assert!(x.print_and_return_err_if_1().is_ok());
+/// # Ok::<(),Box<dyn Error>>(())
+/// ```
 pub struct Helper{
     pub x:i32,
 }
