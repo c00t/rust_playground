@@ -1,4 +1,15 @@
-/// Doc Test test
+/// # Doc Test test
+/// 
+/// In the first example we create a Helper instance, and exmine its x component.
+/// ```
+/// # use ch7::Helper;
+/// # let x = Helper{
+/// #   x:1
+/// # };
+/// assert_eq!(x.print_and_return_x("doctest"),1);
+/// ```
+/// 
+/// In the second example we create a Helper instance, and test the `return Result` usage.
 /// 
 pub struct Helper{
     pub x:i32,
@@ -13,6 +24,13 @@ impl Helper{
     #[cfg(test)]
     pub fn x_plus_1(&self)->i32{
         self.x+1
+    }
+    pub fn print_and_return_err_if_1(&self)->Result<i32,i32>{
+        if self.x == 1{
+            return Err(self.x);
+        }else {
+            return Ok(self.x);
+        }
     }
 }
 
