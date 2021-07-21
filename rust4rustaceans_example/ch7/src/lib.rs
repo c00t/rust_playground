@@ -83,4 +83,18 @@ mod tests{
         };
         assert_eq!(x.x_plus_1(),2);
     }
+    // #[test]
+    // fn two_exclusive_refs(){
+    //     let mut x = 42;
+    //     let x = &mut x;
+    //     let (x1,x2) = unsafe {
+    //         (
+    //             &mut *x,
+    //             &mut *x,
+    //         )
+    //     };
+    //     *x1=32;
+    //     println!("{},{}",x1,x2);
+    //     assert_eq!(*x1,42);
+    // }
 }
