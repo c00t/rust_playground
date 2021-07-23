@@ -103,4 +103,24 @@ fn main() {
         };
     }
     mm!();
+
+    /// Test Rust macro's hygiene
+    macro_rules! let_make_a_foo {
+        ($x:expr) => {
+            let foo_test = $x;
+        }
+    }
+    let foo_test = 1; // (1)
+    let_make_a_foo!(2);// 展开为 let foo = 2;
+    assert_eq!(foo_test,1);// 并没有sahdow (1)中的foo_test
+    // 想要影响到caller's scope的话，可以使用以下方法
+    macro_rules! let_make_a_shadow_foo{
+        ($x:ident,$y:expr) => {
+            let $x = $x + 1;
+        }
+    }
+    let foo_test = 1; // (1)
+    let_make_a_shadow_foo!(foo_test,foo_test + 1);// 这里显式引入了foo_test，和之前强调的点是一样的，需要注意的是`foo_test+1`同样也引入了`foo_test`。
+    assert_eq!(foo_test,2);
+
 }
