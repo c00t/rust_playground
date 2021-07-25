@@ -149,4 +149,17 @@ fn main() {
     use proc_macro_examples::show_streams;
     #[show_streams(barbar)]
     fn invoke1(){}
+
+
+    /// Test R4R token span example
+    macro_rules! name_as_debug{
+        ($t:ty)=>{
+            impl ::core::fmt::Debug for $t {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result{
+                    ::core::write!(f,::core::stringify!($t))
+                }
+            }
+        }
+    }
+    name_as_debug!(u31);
 }
