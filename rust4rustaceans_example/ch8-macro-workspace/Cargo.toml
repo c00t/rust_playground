@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "macro-binary",
+    "proc_macro_examples",
 ]
 default-run = "macro-binary"

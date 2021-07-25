@@ -123,4 +123,30 @@ fn main() {
     let_make_a_shadow_foo!(foo_test,foo_test + 1);// 这里显式引入了foo_test，和之前强调的点是一样的，需要注意的是`foo_test+1`同样也引入了`foo_test`。
     assert_eq!(foo_test,2);
 
+    /// Test TRR Proc-Macro examples in binary
+    use proc_macro_examples::make_answer;
+    make_answer!();
+    println!("{}",answer());
+
+    /// Test TRR Derive-Proc-Macro examples in binary
+    use proc_macro_examples::AnswerFnDerive;
+    #[derive(AnswerFnDerive)]
+    struct SSS;
+    // `derive(...)` add an answer_derive()->u32{42} here
+    let ss = SSS{};//这里的SSS的定义并不会消失。
+    println!("{}",answer_derive());
+
+    /// Test TRR derive-macro-helper-attributes example in binary
+    use proc_macro_examples::ZZZZ;
+    #[derive(ZZZZ)]
+    struct SSSS{
+        #[helper1] field1:i32,
+        #[helper2] field2:i32,
+        //#[helper3] field3:i32, error here, not defined.
+    };
+
+    /// Test TRR attribute macros example in binary
+    use proc_macro_examples::show_streams;
+    #[show_streams(barbar)]
+    fn invoke1(){}
 }
