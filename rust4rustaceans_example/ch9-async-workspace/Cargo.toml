@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "async-binary",
+]
+default-run = "async-binary"
