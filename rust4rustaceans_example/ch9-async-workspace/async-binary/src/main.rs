@@ -1,7 +1,38 @@
-use std::{sync::mpsc::Receiver, sync::mpsc::Sender};
+use std::{future::Future, string, sync::mpsc::Receiver, sync::mpsc::Sender};
+
+/// 这种方式不允许嵌套Scope
+macro_rules! pin_mut {
+    ($var:ident) => {
+        let mut $var = $var;
+        let mut $var = unsafe{
+            ::std::pin::Pin::new_unchecked(&mut $var)
+        };
+    };
+}
+
+/// 这种方式允许嵌套Scope
+macro_rules! pin_mut_self {
+    ($var:ident) => {
+        let mut $var = unsafe{
+            ::std::pin::Pin::new_unchecked(&mut $var)
+        };
+    };
+}
 
 fn main() {
     println!("Hello, world!");
+    
+    let mut x = String::from("123");
+    pin_mut!(x);
+    println!("{}",x);
+
+    let mut x = String::from("123");
+    {
+        pin_mut_self!(x);
+        //methods that take `Pin<&mut Self>`
+        println!("{}",x);//`Pin<&mut String>`
+    }
+    println!("{}",x);//这里的类型为String
 }
 
 /// Manually implementing a channel-forwarding future
@@ -51,3 +82,12 @@ struct PlaceHolder;
 //         }
 //     }
 // }
+
+// impl Future for xxx{
+//     type Output;
+
+//     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+//         todo!()
+//     }
+// }
+
