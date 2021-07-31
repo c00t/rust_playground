@@ -1,4 +1,4 @@
-use std::{future::Future, string, sync::mpsc::Receiver, sync::mpsc::Sender};
+use std::{future::Future, pin::Pin, string, sync::mpsc::Receiver, sync::mpsc::Sender};
 
 /// 这种方式不允许嵌套Scope
 macro_rules! pin_mut {
@@ -25,7 +25,7 @@ fn main() {
     let mut x = String::from("123");
     pin_mut!(x);
     println!("{}",x);
-
+    let y = unsafe{Pin::into_inner_unchecked(x)};
     let mut x = String::from("123");
     {
         pin_mut_self!(x);
