@@ -4,6 +4,9 @@ debug/
 target/
 .vscode/
 
+# configuration files for CLion
+.idea/
+
 output.txt
 
 # Remove Cargo.lock from gitignore if creating an executable, leave it for libraries
